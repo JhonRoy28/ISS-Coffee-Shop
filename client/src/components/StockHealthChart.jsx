@@ -1,9 +1,9 @@
 import CardHeader from './CardHeader.jsx';
 
 const ROWS = [
-  { key: 'in', label: 'In stock', color: 'var(--primary)' },
-  { key: 'low', label: 'Low stock', color: 'var(--gold)' },
-  { key: 'out', label: 'Out of stock', color: 'var(--navy)' },
+  { key: 'in', label: 'In stock', color: 'var(--inventory-chart-in)' },
+  { key: 'low', label: 'Low stock', color: 'var(--inventory-chart-low)' },
+  { key: 'out', label: 'Out of stock', color: 'var(--inventory-chart-out)' },
 ];
 
 export default function StockHealthChart({ stats }) {

@@ -4,6 +4,7 @@ import { Ellipsis } from 'lucide-react';
 export default function RowActions({ itemName, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const triggerRef = useRef(null);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -21,7 +22,7 @@ export default function RowActions({ itemName, onEdit, onDelete }) {
 
   const choose = (handler) => () => {
     setOpen(false);
-    handler?.();
+    handler?.(triggerRef.current);
   };
 
   return (
@@ -29,6 +30,7 @@ export default function RowActions({ itemName, onEdit, onDelete }) {
       <button
         type="button"
         className="icon-button"
+        ref={triggerRef}
         aria-label={`Actions for ${itemName}`}
         aria-haspopup="menu"
         aria-expanded={open}
