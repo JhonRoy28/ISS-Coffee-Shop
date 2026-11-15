@@ -1,4 +1,4 @@
-import { Download, Plus } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 export default function PageHeader({ onExport, onAddItem }) {
   return (
@@ -16,7 +16,6 @@ export default function PageHeader({ onExport, onAddItem }) {
           Export
         </button>
         <button type="button" className="btn btn--primary" onClick={onAddItem}>
-          <Plus size={16} aria-hidden="true" />
           Add Item
         </button>
       </div>
