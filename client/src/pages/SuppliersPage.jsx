@@ -4,8 +4,11 @@ import RowActions from '../components/RowActions.jsx';
 import SupplierModal from '../components/SupplierModal.jsx';
 import { fetchItems } from '../api/inventoryApi.js';
 import { createSupplier, deleteSupplier, fetchSuppliers, updateSupplier } from '../api/supplierApi.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function SuppliersPage() {
+  const { user } = useAuth();
+  const canManageSuppliers = user?.role === 'admin';
   const [suppliers, setSuppliers] = useState([]);
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState('');
@@ -13,6 +16,7 @@ export default function SuppliersPage() {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [formError, setFormError] = useState('');
   const triggerRef = useRef(null);
 
@@ -24,7 +28,7 @@ export default function SuppliersPage() {
         setSuppliers(supplierData);
         setItems(itemData);
       })
-      .catch(() => active && setError('We could not load suppliers. Please try again.'))
+      .catch((loadError) => active && setError(loadError.message || 'We could not load suppliers. Please try again.'))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, []);
@@ -41,6 +45,7 @@ export default function SuppliersPage() {
   const openAdd = (event) => {
     triggerRef.current = event.currentTarget;
     setFormError('');
+    setSuccess('');
     setSelectedSupplier(null);
     setShowModal(true);
   };
@@ -48,6 +53,7 @@ export default function SuppliersPage() {
   const openEdit = (supplier) => (trigger) => {
     triggerRef.current = trigger;
     setFormError('');
+    setSuccess('');
     setSelectedSupplier(supplier);
     setShowModal(true);
   };
@@ -55,6 +61,7 @@ export default function SuppliersPage() {
   const closeModal = useCallback(() => setShowModal(false), []);
 
   const saveSupplier = async (values) => {
+    const editing = Boolean(selectedSupplier);
     try {
       const saved = selectedSupplier
         ? await updateSupplier(selectedSupplier._id, values)
@@ -63,9 +70,15 @@ export default function SuppliersPage() {
         ? current.map((supplier) => supplier._id === saved._id ? saved : supplier)
         : [...current, saved]);
       setError('');
+      setSuccess(editing ? 'Supplier updated successfully.' : 'Supplier added successfully.');
       setShowModal(false);
-    } catch {
-      setFormError('We could not save this supplier. Please try again.');
+      try {
+        setSuppliers(await fetchSuppliers());
+      } catch (refreshError) {
+        setError(`Supplier saved, but the list could not be refreshed: ${refreshError.message}`);
+      }
+    } catch (saveError) {
+      setFormError(saveError.message || 'We could not save this supplier. Please try again.');
     }
   };
 
@@ -75,8 +88,15 @@ export default function SuppliersPage() {
       await deleteSupplier(supplier._id);
       setSuppliers((current) => current.filter((entry) => entry._id !== supplier._id));
       setError('');
-    } catch {
-      setError('We could not delete this supplier. Please try again.');
+      setSuccess('Supplier deleted successfully.');
+      try {
+        setSuppliers(await fetchSuppliers());
+      } catch (refreshError) {
+        setError(`Supplier deleted, but the list could not be refreshed: ${refreshError.message}`);
+      }
+    } catch (deleteError) {
+      setSuccess('');
+      setError(deleteError.message || 'We could not delete this supplier. Please try again.');
     }
   };
 
@@ -88,14 +108,17 @@ export default function SuppliersPage() {
           <h1>Suppliers</h1>
           <p className="page-header__subtitle">Keep your cafe’s purchasing contacts in one place.</p>
         </div>
-        <div className="page-header__actions">
-          <button type="button" className="btn btn--primary" onClick={openAdd}>
-            Add supplier
-          </button>
-        </div>
+        {canManageSuppliers && (
+          <div className="page-header__actions">
+            <button type="button" className="btn btn--primary" onClick={openAdd}>
+              Add supplier
+            </button>
+          </div>
+        )}
       </header>
 
       {error && <p className="status-message status-message--error" role="alert">{error}</p>}
+      {success && <p className="status-message" role="status">{success}</p>}
       {loading ? (
         <p className="status-message" role="status">Loading suppliers...</p>
       ) : suppliers.length === 0 ? (
@@ -125,7 +148,7 @@ export default function SuppliersPage() {
                   <th scope="col">Category</th>
                   <th scope="col">Items</th>
                   <th scope="col">Status</th>
-                  <th scope="col" className="table__action">Action</th>
+                  {canManageSuppliers && <th scope="col" className="table__action">Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -142,17 +165,19 @@ export default function SuppliersPage() {
                     <td>{supplier.category}</td>
                     <td>{items.filter((item) => item.supplier === supplier.name).length}</td>
                     <td><span className={`supplier-status supplier-status--${supplier.status}`}>{supplier.status}</span></td>
-                    <td className="table__action">
-                      <RowActions
-                        itemName={supplier.name}
-                        onEdit={openEdit(supplier)}
-                        onDelete={() => removeSupplier(supplier)}
-                      />
-                    </td>
+                    {canManageSuppliers && (
+                      <td className="table__action">
+                        <RowActions
+                          itemName={supplier.name}
+                          onEdit={openEdit(supplier)}
+                          onDelete={() => removeSupplier(supplier)}
+                        />
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {visibleSuppliers.length === 0 && (
-                  <tr><td colSpan={6} className="empty">No suppliers match your search.</td></tr>
+                  <tr><td colSpan={canManageSuppliers ? 6 : 5} className="empty">No suppliers match your search.</td></tr>
                 )}
               </tbody>
             </table>

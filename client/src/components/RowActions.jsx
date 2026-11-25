@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Ellipsis } from 'lucide-react';
 
-export default function RowActions({ itemName, onEdit, onDelete }) {
+export default function RowActions({ itemName, onEdit, onDelete, canDelete = true }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const triggerRef = useRef(null);
@@ -41,7 +41,9 @@ export default function RowActions({ itemName, onEdit, onDelete }) {
       {open && (
         <div className="menu" role="menu">
           <button type="button" role="menuitem" onClick={choose(onEdit)}>Edit</button>
-          <button type="button" role="menuitem" className="menu__danger" onClick={choose(onDelete)}>Delete</button>
+          {canDelete && (
+            <button type="button" role="menuitem" className="menu__danger" onClick={choose(onDelete)}>Delete</button>
+          )}
         </div>
       )}
     </div>

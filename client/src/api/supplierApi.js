@@ -1,31 +1,35 @@
-import { mockSuppliers } from '../data/mockSuppliers.js';
+import { apiRequest } from './apiClient.js';
 
-let suppliers = mockSuppliers.map((supplier) => ({ ...supplier }));
-let nextId = 1;
+const request = (path, options = {}) => apiRequest(path, options, {
+  fallbackMessage: 'Supplier request failed.',
+});
 
 export async function fetchSuppliers() {
-  return suppliers.map((supplier) => ({ ...supplier }));
+  const suppliers = await request('/api/suppliers');
+  if (!Array.isArray(suppliers)) {
+    throw new Error('The suppliers response was not a list.');
+  }
+  return suppliers;
 }
 
 export async function createSupplier(values) {
-  const supplier = { ...values, _id: `supplier-${Date.now()}-${nextId++}` };
-  suppliers = [...suppliers, supplier];
-  return { ...supplier };
+  return request('/api/suppliers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(values),
+  });
 }
 
 export async function updateSupplier(id, values) {
-  const index = suppliers.findIndex((supplier) => supplier._id === id);
-  if (index < 0) throw new Error('Supplier not found.');
-
-  const updatedSupplier = { ...suppliers[index], ...values, _id: id };
-  suppliers = suppliers.map((supplier, supplierIndex) => supplierIndex === index ? updatedSupplier : supplier);
-  return { ...updatedSupplier };
+  return request(`/api/suppliers/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(values),
+  });
 }
 
 export async function deleteSupplier(id) {
-  const supplier = suppliers.find((item) => item._id === id);
-  if (!supplier) throw new Error('Supplier not found.');
-
-  suppliers = suppliers.filter((item) => item._id !== id);
-  return { ...supplier };
+  return request(`/api/suppliers/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
 }

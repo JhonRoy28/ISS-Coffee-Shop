@@ -5,7 +5,7 @@ import StatusBadge from './StatusBadge.jsx';
 import RowActions from './RowActions.jsx';
 import { formatQuantity, getStatus } from '../utils/inventory.js';
 
-export default function InventoryTable({ items, onEdit, onDelete }) {
+export default function InventoryTable({ items, onEdit, onDelete, canDelete = true }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
 
@@ -86,7 +86,12 @@ export default function InventoryTable({ items, onEdit, onDelete }) {
                 </td>
                 <td><StatusBadge status={getStatus(item)} /></td>
                 <td className="table__action">
-                  <RowActions itemName={item.name} onEdit={() => onEdit?.(item)} onDelete={() => onDelete?.(item)} />
+                  <RowActions
+                    itemName={item.name}
+                    onEdit={(trigger) => onEdit?.(item, trigger)}
+                    onDelete={canDelete ? () => onDelete?.(item) : undefined}
+                    canDelete={canDelete}
+                  />
                 </td>
               </tr>
             ))}
