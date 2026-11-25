@@ -1,3 +1,5 @@
+import { escapeCsvCell } from './csv.js';
+
 export const STATUS = {
   IN: 'in',
   LOW: 'low',
@@ -50,15 +52,18 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
 });
 export const formatDate = (value) => dateFormat.format(new Date(value));
 
-export function exportItemsToCsv(items) {
+export function createInventoryCsv(items) {
   const header = ['Item', 'SKU', 'Category', 'Quantity', 'Unit', 'Reorder level', 'Status', 'Supplier'];
-  const escape = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
   const rows = items.map((item) =>
     [item.name, item.sku, item.category, item.quantity, item.unit, item.reorderLevel, STATUS_LABEL[getStatus(item)], item.supplier]
-      .map(escape)
+      .map(escapeCsvCell)
       .join(',')
   );
-  const blob = new Blob([[header.map(escape).join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  return [header.map(escapeCsvCell).join(','), ...rows].join('\n');
+}
+
+export function exportItemsToCsv(items) {
+  const blob = new Blob([createInventoryCsv(items)], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

@@ -1,7 +1,12 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Link, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Coffee } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
+import AdminUsersPage from './pages/AdminUsersPage.jsx';
 import InventoryOverview from './pages/InventoryOverview.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import SetupPasswordPage from './pages/SetupPasswordPage.jsx';
 import SuppliersPage from './pages/SuppliersPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 
@@ -11,8 +16,8 @@ const APP_ROUTES = [
   { path: '/reports', label: 'Reports & Analytics', element: <ReportsPage /> },
 ];
 
-function AppHeader() {
-  const { pathname } = useLocation();
+function AppHeader({ logoutError, onLogout }) {
+  const { user } = useAuth();
 
   return (
     <header className="app-header">
@@ -27,49 +32,62 @@ function AppHeader() {
               {label}
             </NavLink>
           ))}
+          {user?.role === 'admin' && (
+            <NavLink
+              to="/users"
+              className={({ isActive }) => `tab-bar__link${isActive ? ' is-active' : ''}`}
+            >
+              User accounts
+            </NavLink>
+          )}
         </div>
       </nav>
-      {pathname === '/inventory' && (
-        <div className="brand-bar">
-          <div className="brand">
-            <span className="brand__icon" aria-hidden="true"><Coffee size={18} /></span>
-            <span className="brand__name">
-              <strong>Brewstock</strong>
-              <span>CAFE INVENTORY</span>
-            </span>
-          </div>
-          <div className="account">
-            <span className="account__name">
-              <strong>National University</strong>
-              <span>ACCOUNT</span>
-            </span>
-            <span className="account__avatar">
-              <span aria-hidden="true">NU</span>
-            </span>
-          </div>
+      <div className="brand-bar">
+        <Link className="brand" to="/inventory" aria-label="Brewstock inventory">
+          <span className="brand__icon" aria-hidden="true"><Coffee size={18} /></span>
+          <span className="brand__name">
+            <strong>Brewstock</strong>
+            <span>CAFE INVENTORY</span>
+          </span>
+        </Link>
+        <div className="account">
+          <span className="account__name">
+            <strong>{user?.name}</strong>
+            <span>{user?.role}</span>
+          </span>
+          <button type="button" className="btn btn--outline" onClick={onLogout}>Sign out</button>
         </div>
-      )}
+      </div>
+      {logoutError && <p className="status-message status-message--error" role="alert">{logoutError}</p>}
     </header>
   );
 }
 
-function RoutedApp() {
+function AppFrame() {
   const { pathname } = useLocation();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [logoutError, setLogoutError] = useState('');
   const activeRoute = APP_ROUTES.find(({ path }) => path === pathname);
 
   useEffect(() => {
-    document.title = `${activeRoute?.label ?? 'Inventory'} | Brewstock`;
-  }, [activeRoute]);
+    document.title = `${activeRoute?.label ?? (pathname === '/users' ? 'User accounts' : 'Inventory')} | Brewstock`;
+  }, [activeRoute, pathname]);
+
+  const handleLogout = async () => {
+    setLogoutError('');
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (error) {
+      setLogoutError(error.message || 'Could not sign out. Please try again.');
+    }
+  };
 
   return (
     <>
-      <AppHeader />
-      <Routes>
-        {APP_ROUTES.map(({ path, element }) => (
-          <Route key={path} path={path} element={element} />
-        ))}
-        <Route path="*" element={<Navigate to="/inventory" replace />} />
-      </Routes>
+      <AppHeader logoutError={logoutError} onLogout={handleLogout} />
+      <Outlet />
     </>
   );
 }
@@ -77,7 +95,23 @@ function RoutedApp() {
 export default function App() {
   return (
     <BrowserRouter>
-      <RoutedApp />
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/setup-password" element={<SetupPasswordPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppFrame />}>
+              {APP_ROUTES.map(({ path, element }) => (
+                <Route key={path} path={path} element={element} />
+              ))}
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route path="/users" element={<AdminUsersPage />} />
+              </Route>
+            </Route>
+          </Route>
+          <Route path="*" element={<Navigate to="/inventory" replace />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
