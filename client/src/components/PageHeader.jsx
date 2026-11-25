@@ -5,7 +5,7 @@ export default function PageHeader({ onExport, onAddItem }) {
     <header className="page-header">
       <div className="page-header__text">
         <p className="eyebrow">Operations / Inventory</p>
-        <h1>Inventory overview</h1>
+        <h1><span className="inventory-heading-word">Inventory</span> overview</h1>
         <p className="page-header__subtitle">
           Keep an eye on stock levels, costs, and the ingredients that keep your cafe moving.
         </p>

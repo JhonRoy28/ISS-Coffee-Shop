@@ -1,13 +1,12 @@
-# Cafe Inventory (MERN)
+# Brewstock Café Inventory Demo
 
-A cafe inventory system built with MongoDB, Express, React, and Node.
+A frontend-only café inventory prototype with a cobalt-and-cream café menu visual theme.
 
 ## Project structure
 
 ```
-cafe-inventory/
-  client/   React frontend (Vite)   <- done for the Inventory Overview page
-  server/   Express + MongoDB API   <- next step
+ISS-Coffee-Shop/
+  client/   React frontend (Vite) with in-memory demo data
 ```
 
 ## Run the frontend
@@ -22,13 +21,19 @@ npm run dev
 
 Then open http://localhost:5173.
 
-## What works right now
+## Demo screens and workflows
 
-- Inventory Overview page, built from the design screenshots
-- Stat cards, stock level chart, and low stock alerts, all calculated from the data
-- Inventory table with search (name, SKU, supplier) and category filter
-- Export button (downloads the inventory as a CSV file)
-- Row menu with Edit and Delete (connected to the backend in the next step)
+- Sign-in screen with Manager and Barista demo roles
+- Dashboard summary for stock quantity, low-stock alerts, expiring batches, and estimated inventory value in PHP
+- Ingredient catalog with search, category filter, create/edit/delete controls, batches, and expiry dates
+- Stock-In/Stock-Out forms with positive quantity checks, available-stock checks, and FIFO batch deduction
+- Supplier directory and sample staff/role management screens
+- Read-only audit trail and stock movement history
+- Café-specific STRIDE threat-model and local OWASP ZAP testing preview
+- Role-based screen and control previews: Baristas have view-only ingredient access and can record Stock-Out entries
 
-The page currently reads sample data from `client/src/data/mockItems.js`.
-When the API is ready, only `client/src/api/inventoryApi.js` needs to change.
+All records are sample data held in React memory and reset on refresh. The login form does not authenticate users; the role selection only previews the intended UI.
+
+## Security scope
+
+This project currently has no backend, database, password hashing, server sessions, rate limiting, immutable audit log, or server-side role enforcement. Client-side checks are not security controls and can be bypassed. Do not use this prototype with real staff credentials or operational inventory. A production version needs a secured API implementing authentication, validation, authorization, and persistent audit records.

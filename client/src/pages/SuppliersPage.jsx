@@ -1,177 +1,101 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
-import RowActions from '../components/RowActions.jsx';
-import SupplierModal from '../components/SupplierModal.jsx';
-import { fetchItems } from '../api/inventoryApi.js';
-import { createSupplier, deleteSupplier, fetchSuppliers, updateSupplier } from '../api/supplierApi.js';
+import { useState } from 'react';
+import { Plus, Truck } from 'lucide-react';
 
-export default function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState([]);
-  const [items, setItems] = useState([]);
-  const [query, setQuery] = useState('');
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+const EMPTY_SUPPLIER = {
+  name: '',
+  contactPerson: '',
+  email: '',
+  phone: '',
+  category: 'Coffee Beans',
+  leadTime: 0,
+  status: 'active',
+  notes: '',
+};
+
+function SupplierForm({ supplier, onSave, onCancel }) {
+  const [values, setValues] = useState(supplier ? { ...supplier } : { ...EMPTY_SUPPLIER });
   const [error, setError] = useState('');
-  const [formError, setFormError] = useState('');
-  const triggerRef = useRef(null);
 
-  useEffect(() => {
-    let active = true;
-    Promise.all([fetchSuppliers(), fetchItems()])
-      .then(([supplierData, itemData]) => {
-        if (!active) return;
-        setSuppliers(supplierData);
-        setItems(itemData);
-      })
-      .catch(() => active && setError('We could not load suppliers. Please try again.'))
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
-  }, []);
-
-  const visibleSuppliers = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    if (!term) return suppliers;
-    return suppliers.filter((supplier) =>
-      [supplier.name, supplier.email, supplier.contactPerson, supplier.phone, supplier.category]
-        .some((value) => value?.toLowerCase().includes(term))
-    );
-  }, [query, suppliers]);
-
-  const openAdd = (event) => {
-    triggerRef.current = event.currentTarget;
-    setFormError('');
-    setSelectedSupplier(null);
-    setShowModal(true);
+  const submit = (event) => {
+    event.preventDefault();
+    if (!values.name.trim()) return setError('Enter the supplier name.');
+    if (values.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) return setError('Enter a valid email address.');
+    onSave({ ...values, name: values.name.trim(), leadTime: Number(values.leadTime) || 0 });
   };
 
-  const openEdit = (supplier) => (trigger) => {
-    triggerRef.current = trigger;
-    setFormError('');
-    setSelectedSupplier(supplier);
-    setShowModal(true);
-  };
+  return (
+    <form className="supplier-editor" onSubmit={submit}>
+      <div className="supplier-editor__heading">
+        <h2 className="card-title">{supplier ? 'Edit supplier' : 'Add supplier'}</h2>
+        <button type="button" className="text-button" onClick={onCancel}>Cancel</button>
+      </div>
+      {error && <p className="form-error form-error--banner" role="alert">{error}</p>}
+      <div className="supplier-editor__fields">
+        <label className="form-field">Supplier name<input value={values.name} onChange={(event) => setValues({ ...values, name: event.target.value })} maxLength={120} required /></label>
+        <label className="form-field">Category
+          <select value={values.category} onChange={(event) => setValues({ ...values, category: event.target.value })}>
+            {['Coffee Beans', 'Dairy & Alternatives', 'Syrups & Sauces', 'Packaging', 'Other'].map((category) => <option key={category}>{category}</option>)}
+          </select>
+        </label>
+        <label className="form-field">Contact person<input value={values.contactPerson} onChange={(event) => setValues({ ...values, contactPerson: event.target.value })} /></label>
+        <label className="form-field">Email<input type="email" value={values.email} onChange={(event) => setValues({ ...values, email: event.target.value })} /></label>
+        <label className="form-field">Phone<input type="tel" value={values.phone} onChange={(event) => setValues({ ...values, phone: event.target.value })} /></label>
+        <label className="form-field">Lead time (days)<input type="number" min="0" value={values.leadTime} onChange={(event) => setValues({ ...values, leadTime: event.target.value })} /></label>
+        <label className="form-field form-field--wide">Notes<textarea rows="2" value={values.notes} onChange={(event) => setValues({ ...values, notes: event.target.value })} maxLength={1000} /></label>
+      </div>
+      <button className="btn btn--primary" type="submit">{supplier ? 'Save supplier' : 'Add supplier'}</button>
+    </form>
+  );
+}
 
-  const closeModal = useCallback(() => setShowModal(false), []);
-
-  const saveSupplier = async (values) => {
-    try {
-      const saved = selectedSupplier
-        ? await updateSupplier(selectedSupplier._id, values)
-        : await createSupplier(values);
-      setSuppliers((current) => selectedSupplier
-        ? current.map((supplier) => supplier._id === saved._id ? saved : supplier)
-        : [...current, saved]);
-      setError('');
-      setShowModal(false);
-    } catch {
-      setFormError('We could not save this supplier. Please try again.');
-    }
-  };
-
-  const removeSupplier = async (supplier) => {
-    if (!window.confirm(`Delete ${supplier.name}? This action cannot be undone.`)) return;
-    try {
-      await deleteSupplier(supplier._id);
-      setSuppliers((current) => current.filter((entry) => entry._id !== supplier._id));
-      setError('');
-    } catch {
-      setError('We could not delete this supplier. Please try again.');
-    }
+export default function SuppliersPage({ suppliers, ingredients, onSave, onDelete }) {
+  const [editing, setEditing] = useState(undefined);
+  const save = (values) => {
+    onSave(editing || null, values);
+    setEditing(undefined);
   };
 
   return (
     <main className="page">
       <header className="page-header">
         <div className="page-header__text">
-          <p className="eyebrow">Operations / Suppliers</p>
-          <h1>Suppliers</h1>
-          <p className="page-header__subtitle">Keep your cafe’s purchasing contacts in one place.</p>
+          <p className="eyebrow">Café operations / Partners</p>
+          <h1>Supplier <span className="inventory-heading-word">directory</span></h1>
+          <p className="page-header__subtitle">Keep roasters, dairy partners, and packaging vendors close at hand.</p>
         </div>
-        <div className="page-header__actions">
-          <button type="button" className="btn btn--primary" onClick={openAdd}>
-            Add supplier
-          </button>
-        </div>
+        <button type="button" className="btn btn--primary" onClick={() => setEditing(null)}><Plus size={16} /> Add supplier</button>
       </header>
 
-      {error && <p className="status-message status-message--error" role="alert">{error}</p>}
-      {loading ? (
-        <p className="status-message" role="status">Loading suppliers...</p>
-      ) : suppliers.length === 0 ? (
-        <section className="suppliers-empty" aria-label="No suppliers">
-          No suppliers yet. Add your first purchasing partner.
-        </section>
-      ) : (
-        <section className="card table-card" aria-label="Suppliers">
-          <div className="toolbar">
-            <label className="search">
-              <Search size={16} aria-hidden="true" />
-              <input
-                type="search"
-                placeholder="Search suppliers..."
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                aria-label="Search suppliers"
-              />
-            </label>
-          </div>
-          <div className="table-scroll">
-            <table className="table supplier-table">
-              <thead>
-                <tr>
-                  <th scope="col">Supplier</th>
-                  <th scope="col">Contact</th>
-                  <th scope="col">Category</th>
-                  <th scope="col">Items</th>
-                  <th scope="col">Status</th>
-                  <th scope="col" className="table__action">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleSuppliers.map((supplier) => (
-                  <tr key={supplier._id}>
-                    <td>
-                      <p className="table__name">{supplier.name}</p>
-                      <p className="table__sku">{supplier.email || '—'}</p>
-                    </td>
-                    <td>
-                      <p>{supplier.contactPerson || '—'}</p>
-                      <p className="table__sku">{supplier.phone || '—'}</p>
-                    </td>
-                    <td>{supplier.category}</td>
-                    <td>{items.filter((item) => item.supplier === supplier.name).length}</td>
-                    <td><span className={`supplier-status supplier-status--${supplier.status}`}>{supplier.status}</span></td>
-                    <td className="table__action">
-                      <RowActions
-                        itemName={supplier.name}
-                        onEdit={openEdit(supplier)}
-                        onDelete={() => removeSupplier(supplier)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-                {visibleSuppliers.length === 0 && (
-                  <tr><td colSpan={6} className="empty">No suppliers match your search.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <footer className="table-footer">
-            <span>Showing {visibleSuppliers.length} of {suppliers.length} suppliers</span>
-          </footer>
-        </section>
-      )}
+      {editing !== undefined && <SupplierForm supplier={editing} onSave={save} onCancel={() => setEditing(undefined)} />}
 
-      {showModal && (
-        <SupplierModal
-          supplier={selectedSupplier}
-          triggerRef={triggerRef}
-          error={formError}
-          onClose={closeModal}
-          onSave={saveSupplier}
-        />
-      )}
+      <section className="supplier-directory" aria-label="Suppliers">
+        {suppliers.map((supplier) => {
+          const suppliedItems = ingredients.filter((ingredient) => ingredient.supplier === supplier.name);
+          return (
+            <article className="card supplier-card" key={supplier._id}>
+              <div className="supplier-card__top">
+                <span className="supplier-card__icon" aria-hidden="true"><Truck size={19} /></span>
+                <span className="supplier-status">{supplier.status}</span>
+              </div>
+              <p className="eyebrow">{supplier.category}</p>
+              <h2 className="supplier-card__name">{supplier.name}</h2>
+              <p className="supplier-card__contact">{supplier.contactPerson || 'Contact not added'}</p>
+              <div className="supplier-card__details">
+                {supplier.email && <a href={`mailto:${supplier.email}`}>{supplier.email}</a>}
+                {supplier.phone && <a href={`tel:${supplier.phone}`}>{supplier.phone}</a>}
+                <span>{supplier.leadTime} day{supplier.leadTime === 1 ? '' : 's'} lead time</span>
+              </div>
+              <div className="supplier-card__items"><strong>{suppliedItems.length}</strong> linked ingredients{suppliedItems.length > 0 && <small>{suppliedItems.map((item) => item.name).join(', ')}</small>}</div>
+              <div className="supplier-card__actions">
+                <button type="button" className="text-button" onClick={() => setEditing(supplier)}>Edit</button>
+                <button type="button" className="text-button text-button--danger" onClick={() => onDelete(supplier)}>Delete</button>
+              </div>
+            </article>
+          );
+        })}
+        {!suppliers.length && <section className="suppliers-empty">No suppliers yet. Add a café partner to get started.</section>}
+      </section>
+      <p className="demo-inline-note">Supplier details in this frontend demo are sample data and are not sent to a server.</p>
     </main>
   );
 }
